@@ -1,4 +1,20 @@
 
+# ==========================================
+# AWS IAM SECURITY ASSESSMENT LAB
+# FriscoSec
+# ==========================================
+#
+# Security Objective:
+# NIST CSF 2.0 - PR.AA-05
+# Enforce least privilege and identify
+# excessive IAM permissions.
+#
+# WARNING:
+# This configuration intentionally contains
+# security misconfigurations.
+# DO NOT DEPLOY TO AWS.
+# ==========================================
+
 terraform {
   required_version = ">= 1.5.0"
 
@@ -10,6 +26,10 @@ terraform {
   }
 }
 
+# ==========================================
+# AWS PROVIDER
+# ==========================================
+
 provider "aws" {
   region = "us-east-2"
 }
@@ -18,12 +38,14 @@ provider "aws" {
 # IAM ROLE
 # ==========================================
 
-# This role is intended for an EC2 application
-# that only needs to read reports from S3.
+# Business Requirement:
+# An EC2 application needs to read reports
+# from a designated S3 bucket.
 
 resource "aws_iam_role" "app_role" {
   name = "friscosec-app-role"
 
+  # Trust policy: EC2 can assume this role.
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
 
@@ -45,11 +67,14 @@ resource "aws_iam_role" "app_role" {
 # INTENTIONALLY INSECURE IAM POLICY
 # ==========================================
 
-# LAB PURPOSE:
-# Identify excessive permissions and
-# potential privilege escalation risks.
+# Finding 1:
+# Excessive S3 permissions.
 #
-# Do not deploy this configuration.
+# Finding 2:
+# Unrestricted iam:PassRole.
+#
+# Both violate our stated least-privilege
+# security objective.
 
 resource "aws_iam_role_policy" "app_policy" {
   name = "friscosec-app-policy"
@@ -68,62 +93,6 @@ resource "aws_iam_role_policy" "app_policy" {
       },
       {
         Sid      = "UnrestrictedPassRole"
-        Effect   = "Allow"
-        Action   = "iam:PassRole"
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-terraform {
-  required_version = ">= 1.5.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = "us-east-2"
-}
-
-# Intentionally insecure IAM configuration
-# Security assessment only — DO NOT APPLY
-
-resource "aws_iam_role" "app_role" {
-  name = "friscosec-app-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy" "app_policy" {
-  name = "friscosec-app-policy"
-  role = aws_iam_role.app_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = "s3:*"
-        Resource = "*"
-      },
-      {
         Effect   = "Allow"
         Action   = "iam:PassRole"
         Resource = "*"
